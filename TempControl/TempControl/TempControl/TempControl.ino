@@ -14,6 +14,7 @@ DallasTemperature sensors(&oneWire);
 
 
 #include <LiquidCrystal.h>
+#include <math.h>
 LiquidCrystal lcd(12, 11, 7, 6, 5, 4);
 
 constexpr auto RELAY_HEAT = 8;
@@ -64,11 +65,15 @@ void loop(void)
 		// startHeating
 		tempControl(HEAT);
 	}
-	else
+	
+	if (abs(tempBarrel - tempTarget) < 0.5)
 	{
 		tempControl(REST);
 	}
-
+	if (digitalRead(RELAY_COOL)==HIGH && digitalRead(RELAY_HEAT) == HIGH)
+	{
+		tempControl(REST);
+	}
 
 
 
