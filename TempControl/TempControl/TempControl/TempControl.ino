@@ -23,7 +23,7 @@ constexpr auto HEAT = 1;
 constexpr auto COOL = 2;
 constexpr auto REST = 0;
 constexpr auto MARGIN = 1;
-long time = 0;
+long timet = 0;
 
 void setup(void)
 {
@@ -68,32 +68,32 @@ void loop(void)
 	Serial.print(tempTarget);
 	Serial.print("  -   ");
 	lcd.setCursor(11, 1);
-	lcd.print(time);
-	Serial.println(time);
+	lcd.print(timet);
+	Serial.println(timet);
 
 	int mode = REST;
 
 	if (tempBarrel > tempTarget + 0.75)    // startCooling
 	{
-		if (time < 220)
+		if (timet < 420)
 		{
 			tempControl(COOL);
 			mode = COOL;
 		}
 		else tempControl(REST);
 
-		time++;
+		timet++;
 	}
 	else if (tempBarrel < tempTarget - 0.75)    // startHeating
 	{
-		if (time < 120)
+		if (timet < 80)
 		{
 			tempControl(HEAT);
 			mode = HEAT;
 		}
 		else tempControl(REST);
 
-		time++;
+		timet++;
 	}
 	/*
 	if (mode == HEAT && tempBarrel > tempTarget + 0.2)
@@ -110,16 +110,16 @@ void loop(void)
 	{
 
 		tempControl(REST);
-		time = 0;
+		timet = 0;
 	}
 
 	if (digitalRead(RELAY_COOL) == HIGH && digitalRead(RELAY_HEAT) == HIGH)
 	{
 		tempControl(REST);
 	}
-	if (time > 350)
+	if (timet > 550)
 	{
-		time = 0;
+		timet = 0;
 	}
 
 	delay(800);
