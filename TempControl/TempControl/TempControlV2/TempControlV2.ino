@@ -25,10 +25,44 @@ DallasTemperature sensors(&oneWire);
 
 // Setpoint temp
 #include <EEPROM.h>
-float setpoint = 10.0;
+double setpoint = 10.0;
 #define ADDRESS_H 0
 #define ADDRESS_L 1
 
+// Cool, heat
+double temp = 20;
+
+bool state;
+double outputVal;
+#define COOL 10 
+#define HEAT 11
+
+
+#include <AutoPID.h>
+#define OUTPUT_MIN -100
+#define OUTPUT_MAX 100
+#define KP 10
+#define KI .005
+#define KD .02
+AutoPID myPID(&temp, &setpoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD);
+
+unsigned long lastTempUpdate; //tracks clock time of last temp update
+#define TEMP_READ_DELAY 800 //can only read digital temp sensor every ~750ms
+
+
+bool updateTemperature() {
+	if ((millis() - lastTempUpdate) > TEMP_READ_DELAY) {
+		temp = sensors.getTempC(TEMP_SENS); //get temp reading
+		//Serial.print(temp);
+		//Serial.print("   ");
+
+		//temp2 = temp;
+		lastTempUpdate = millis();
+		sensors.requestTemperatures(); //request reading for next time
+		return true;
+	}
+	return false;
+}//void updateTemperature
 
 
 void setup() {
@@ -51,19 +85,34 @@ void setup() {
 	Serial.print(sensors.getResolution(TEMP_SENS), DEC);
 	Serial.println();
 
+	pinMode(COOL, OUTPUT);
+	pinMode(HEAT, OUTPUT);
+	digitalWrite(COOL, LOW);
+	digitalWrite(HEAT, LOW);
 
 	pinMode(BTN_DOWN_PIN, INPUT);
 	pinMode(BTN_UP_PIN, INPUT);
 	attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), adjust_up, RISING);
 	attachInterrupt(digitalPinToInterrupt(BTN_DOWN_PIN), adjust_down, RISING);
+
+
+	while (!updateTemperature()) {} //wait until temp sensor updated
+	myPID.setBangBang(3);
+	myPID.setTimeStep(1000);
 }
 
-// the loop function runs over and over again until power down or reset
 void loop() {
+	updateTemperature();
+	myPID.run();
+	//Serial.println(outputVal);
 
 
-	sensors.requestTemperatures();
-	float temp = sensors.getTempC(TEMP_SENS);
+	digitalWrite(HEAT, state);
+	digitalWrite(COOL, myPID.atSetPoint(1));
+
+
+	//sensors.requestTemperatures();
+	//temp = sensors.getTempC(TEMP_SENS);
 
 	display.clearDisplay();
 	display.setTextSize(2);
@@ -76,18 +125,27 @@ void loop() {
 	display.setTextSize(2);
 
 	display.print("SP: ");
-	display.print(setpoint);
+	display.println(setpoint);
+	display.print(": ");
+	display.print(outputVal);
+	//Serial.println(setpoint);
 	display.display();
-	delay(100);
+	delay(1);
 
 	if (digitalRead(BTN_DOWN_PIN) && digitalRead(BTN_UP_PIN)) setpoint = 10.0;
 }
 void adjust_up() {
+	Serial.println("adjust up");
 	setpoint += 0.5;
+	myPID.reset();
 	eeprom_write();
 }
 void adjust_down() {
+	Serial.println("adjust down");
+
 	setpoint -= 0.5;
+	myPID.reset();
+
 	eeprom_write();
 }
 void eeprom_write() {
