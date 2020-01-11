@@ -15,7 +15,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #define ONE_WIRE_BUS  4
-DeviceAddress TEMP_SENS;
+DeviceAddress TEMP_SENS_BEER;
+DeviceAddress TEMP_SENS_ROOM;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
@@ -30,13 +31,21 @@ double setpoint = 10.0;
 #define ADDRESS_L 1
 
 // Cool, heat
-double temp = 20;
+double temp_beer = 20;
+double temp_room = 21;
 
 bool state;
 double outputVal;
-#define COOL 10 
-#define HEAT 11
+#define COOL_OUT 10
+#define FINE_OUT 11
+#define HEAT_OUT 12
+constexpr auto HEAT = 1;
+constexpr auto COOL = 2;
+constexpr auto REST = 0;
+constexpr auto READY = 3;
 
+unsigned long swichTime;
+short mode = 0;
 
 #include <AutoPID.h>
 #define OUTPUT_MIN -100
@@ -44,7 +53,7 @@ double outputVal;
 #define KP 10
 #define KI .005
 #define KD .02
-AutoPID myPID(&temp, &setpoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD);
+AutoPID myPID(&temp_beer, &setpoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD);
 
 unsigned long lastTempUpdate; //tracks clock time of last temp update
 #define TEMP_READ_DELAY 800 //can only read digital temp sensor every ~750ms
@@ -52,7 +61,8 @@ unsigned long lastTempUpdate; //tracks clock time of last temp update
 
 bool updateTemperature() {
 	if ((millis() - lastTempUpdate) > TEMP_READ_DELAY) {
-		temp = sensors.getTempC(TEMP_SENS); //get temp reading
+		temp_beer = sensors.getTempC(TEMP_SENS_BEER); //get temp reading
+		temp_room = sensors.getTempC(TEMP_SENS_ROOM);
 		//Serial.print(temp);
 		//Serial.print("   ");
 
@@ -68,10 +78,10 @@ bool updateTemperature() {
 void setup() {
 	byte h = EEPROM.read(ADDRESS_H);
 	byte l = EEPROM.read(ADDRESS_L);
-	Serial.println(h, HEX);
-	Serial.println(l, HEX);
+	//Serial.println(h, HEX);
+	//Serial.println(l, HEX);
 	setpoint = ((h << 8) + l) / 100.0;
-	Serial.println(setpoint);
+	//Serial.println(setpoint);
 
 	if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
 		Serial.println(F("SSD1306 allocation failed"));
@@ -79,73 +89,162 @@ void setup() {
 	}
 
 	sensors.begin();
-	if (!sensors.getAddress(TEMP_SENS, 0)) Serial.println("Unable to find address for Device 0");
-	sensors.setResolution(TEMP_SENS, 12);
-	Serial.print("Device 0 Resolution: ");
-	Serial.print(sensors.getResolution(TEMP_SENS), DEC);
-	Serial.println();
+	if (!sensors.getAddress(TEMP_SENS_BEER, 0)) Serial.println("Unable to find address for Device 0");
+	if (!sensors.getAddress(TEMP_SENS_ROOM, 1)) Serial.println("Unable to find address for Device 1");
 
-	pinMode(COOL, OUTPUT);
-	pinMode(HEAT, OUTPUT);
-	digitalWrite(COOL, LOW);
-	digitalWrite(HEAT, LOW);
+	sensors.setResolution(TEMP_SENS_BEER, 12);
+	sensors.setResolution(TEMP_SENS_ROOM, 12);
 
-	pinMode(BTN_DOWN_PIN, INPUT);
-	pinMode(BTN_UP_PIN, INPUT);
-	attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), adjust_up, RISING);
-	attachInterrupt(digitalPinToInterrupt(BTN_DOWN_PIN), adjust_down, RISING);
+	//Serial.print("Device 0 Resolution: ");
+	//Serial.print(sensors.getResolution(TEMP_SENS), DEC);
+	//Serial.println();
+
+	pinMode(COOL_OUT, OUTPUT);
+	pinMode(HEAT_OUT, OUTPUT);
+	pinMode(FINE_OUT, OUTPUT);
+	digitalWrite(COOL_OUT, LOW);
+	digitalWrite(HEAT_OUT, LOW);
+	digitalWrite(FINE_OUT, LOW);
+
+	pinMode(BTN_DOWN_PIN, INPUT_PULLUP);
+	pinMode(BTN_UP_PIN, INPUT_PULLUP);
+	attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), adjust_up, FALLING);
+	attachInterrupt(digitalPinToInterrupt(BTN_DOWN_PIN), adjust_down, FALLING);
 
 
 	while (!updateTemperature()) {} //wait until temp sensor updated
-	myPID.setBangBang(3);
+	myPID.setBangBang(4);
 	myPID.setTimeStep(1000);
+
+	swichTime = millis();
 }
 
 void loop() {
 	updateTemperature();
 	myPID.run();
-	//Serial.println(outputVal);
+	digitalWrite(FINE_OUT, !myPID.atSetPoint(0.5));
 
 
-	digitalWrite(HEAT, state);
-	digitalWrite(COOL, myPID.atSetPoint(1));
+	if (millis() > swichTime + 1000)
+	{
+		switch (mode)
+		{
+		case READY:
+			if (outputVal > 2) //Heat
+			{
+				swichTime = millis() + (int)(outputVal * 1000);
+				mode = HEAT;
+				//Serial.println("HEAT");
+			}
+			if (outputVal < -5) // Cool
+			{
+				uint32_t sek = abs(outputVal) + 60;
+				swichTime = millis() + (sek * 1000);
+				mode = COOL;
+				//Serial.println("COOL");
 
+			}
+			break;
+		case REST:
+			mode = READY;
+			//Serial.println("READY");
 
-	//sensors.requestTemperatures();
-	//temp = sensors.getTempC(TEMP_SENS);
+			break;
+		case HEAT:
+			mode = REST;
+			swichTime = millis() + (unsigned long)(outputVal * 1000);
+			//Serial.println("REST");
+
+			break;
+		case COOL:
+			mode = REST;
+		//	Serial.println("-");
+		//	Serial.println(swichTime);
+			unsigned long ti = 60000;
+		//	Serial.println(ti);
+
+			swichTime = millis() + ti;
+		//	Serial.println(swichTime);
+		//	delay(3000);
+			//Serial.println("REST");
+
+			break;
+		default:
+			mode = REST;
+			//Serial.println("REST  d");
+
+			break;
+		}
+	}
+	delay(50);
+	if (mode == COOL && outputVal > 3)
+	{
+		mode = REST;
+		swichTime = millis() + (30 * 1000);
+
+	}
+	if (mode == HEAT && outputVal < 3) 
+	{
+		mode = REST;
+		swichTime = millis() + (30 * 1000);
+
+	}
+
+	tempControl(mode);
 
 	display.clearDisplay();
-	display.setTextSize(2);
 	display.setTextColor(WHITE);
-	display.setCursor(0, 0);
-	display.print("T: ");
+
 	display.setTextSize(3);
+	display.setCursor(0, 0);
+	display.print("C:");
+	display.println(temp_beer);
 
-	display.println(temp);
 	display.setTextSize(2);
-
 	display.print("SP: ");
 	display.println(setpoint);
-	display.print(": ");
-	display.print(outputVal);
-	//Serial.println(setpoint);
-	display.display();
-	delay(1);
 
-	if (digitalRead(BTN_DOWN_PIN) && digitalRead(BTN_UP_PIN)) setpoint = 10.0;
+	display.setTextSize(1);
+	display.print("P:");
+	display.print(outputVal);
+
+	unsigned long time = millis() / 1000;
+	display.print(" T:");
+	display.println(time);
+
+
+	display.print("Tsw.: ");
+	time = swichTime / 1000;
+	display.println(time);
+
+
+	display.print("RT:");
+	display.println(temp_room);
+
+	display.display();
+
+
+
+	if (!digitalRead(BTN_DOWN_PIN) && !digitalRead(BTN_UP_PIN)) setpoint = 10.0;
 }
 void adjust_up() {
-	Serial.println("adjust up");
+	delay(40);
+	if (digitalRead(BTN_UP_PIN))
+	{
+		return;
+	}
 	setpoint += 0.5;
 	myPID.reset();
 	eeprom_write();
 }
 void adjust_down() {
-	Serial.println("adjust down");
-
+	delay(40);
+	if (digitalRead(BTN_DOWN_PIN))
+	{
+		return;
+	}
 	setpoint -= 0.5;
 	myPID.reset();
-
 	eeprom_write();
 }
 void eeprom_write() {
@@ -156,5 +255,24 @@ void eeprom_write() {
 
 	EEPROM.write(ADDRESS_L, bytes[1]);
 	EEPROM.write(ADDRESS_H, bytes[0]);
+
+}
+void tempControl(int mode) {
+	if (mode == HEAT)
+	{
+		digitalWrite(HEAT_OUT, LOW);
+		digitalWrite(COOL_OUT, HIGH);
+	}
+	else if (mode == COOL)
+	{
+		digitalWrite(HEAT_OUT, HIGH);
+		digitalWrite(COOL_OUT, LOW);
+	}
+	else
+	{
+		digitalWrite(HEAT_OUT, HIGH);
+		digitalWrite(COOL_OUT, HIGH);
+
+	}
 
 }
