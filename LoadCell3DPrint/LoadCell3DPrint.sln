@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LoadCell3DPrint", "LoadCell3DPrint\LoadCell3DPrint.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LoadCell3DPrint_v2", "LoadCell3DPrint_v2\LoadCell3DPrint_v2.vcxproj", "{051E6503-093C-45A7-AA48-20CAE856C9CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -15,6 +17,10 @@ Global
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{051E6503-093C-45A7-AA48-20CAE856C9CA}.Debug|x86.ActiveCfg = Debug|Win32
+		{051E6503-093C-45A7-AA48-20CAE856C9CA}.Debug|x86.Build.0 = Debug|Win32
+		{051E6503-093C-45A7-AA48-20CAE856C9CA}.Release|x86.ActiveCfg = Release|Win32
+		{051E6503-093C-45A7-AA48-20CAE856C9CA}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

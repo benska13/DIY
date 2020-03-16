@@ -48,7 +48,7 @@ unsigned long swichTime;
 short mode = 0;
 
 #include <AutoPID.h>
-#define OUTPUT_MIN -100
+#define OUTPUT_MIN -200
 #define OUTPUT_MAX 100
 #define KP 10
 #define KI .005
@@ -58,6 +58,8 @@ AutoPID myPID(&temp_beer, &setpoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI,
 unsigned long lastTempUpdate; //tracks clock time of last temp update
 #define TEMP_READ_DELAY 800 //can only read digital temp sensor every ~750ms
 
+
+unsigned long time = 0;
 
 bool updateTemperature() {
 	if ((millis() - lastTempUpdate) > TEMP_READ_DELAY) {
@@ -102,8 +104,8 @@ void setup() {
 	pinMode(COOL_OUT, OUTPUT);
 	pinMode(HEAT_OUT, OUTPUT);
 	pinMode(FINE_OUT, OUTPUT);
-	digitalWrite(COOL_OUT, LOW);
-	digitalWrite(HEAT_OUT, LOW);
+	digitalWrite(COOL_OUT, HIGH);
+	digitalWrite(HEAT_OUT, HIGH);
 	digitalWrite(FINE_OUT, LOW);
 
 	pinMode(BTN_DOWN_PIN, INPUT_PULLUP);
@@ -114,9 +116,9 @@ void setup() {
 
 	while (!updateTemperature()) {} //wait until temp sensor updated
 	myPID.setBangBang(4);
-	myPID.setTimeStep(1000);
+	myPID.setTimeStep(4000);
 
-	swichTime = millis();
+	swichTime = 0;
 }
 
 void loop() {
@@ -124,69 +126,60 @@ void loop() {
 	myPID.run();
 	digitalWrite(FINE_OUT, !myPID.atSetPoint(0.5));
 
+	if (millis()/1000 > time)		time++;
 
-	if (millis() > swichTime + 1000)
+
+	if (time > swichTime)
 	{
 		switch (mode)
 		{
 		case READY:
 			if (outputVal > 2) //Heat
 			{
-				swichTime = millis() + (int)(outputVal * 1000);
+				time = 0;
+				swichTime = outputVal;
 				mode = HEAT;
-				//Serial.println("HEAT");
 			}
 			if (outputVal < -5) // Cool
 			{
-				uint32_t sek = abs(outputVal) + 60;
-				swichTime = millis() + (sek * 1000);
+				time = 0;
+				swichTime = abs(outputVal)+50;
 				mode = COOL;
-				//Serial.println("COOL");
-
 			}
 			break;
 		case REST:
 			mode = READY;
-			//Serial.println("READY");
-
 			break;
 		case HEAT:
 			mode = REST;
-			swichTime = millis() + (unsigned long)(outputVal * 1000);
-			//Serial.println("REST");
-
+			time = 0;
+			swichTime = 100 - outputVal;
 			break;
 		case COOL:
 			mode = REST;
-		//	Serial.println("-");
-		//	Serial.println(swichTime);
-			unsigned long ti = 60000;
-		//	Serial.println(ti);
-
-			swichTime = millis() + ti;
-		//	Serial.println(swichTime);
-		//	delay(3000);
-			//Serial.println("REST");
-
+			time = 0;
+			swichTime = 200 - abs(outputVal);
 			break;
 		default:
 			mode = REST;
-			//Serial.println("REST  d");
-
 			break;
 		}
 	}
+
+
 	delay(50);
-	if (mode == COOL && outputVal > 3)
+
+
+	if (mode == COOL && outputVal < 0 && outputVal > 3)
 	{
 		mode = REST;
-		swichTime = millis() + (30 * 1000);
+		//swichTime = millis() + (30 * 1000);
 
 	}
-	if (mode == HEAT && outputVal < 3) 
+	if (mode == HEAT && outputVal > 0 && outputVal < 3) 
 	{
 		mode = REST;
-		swichTime = millis() + (30 * 1000);
+		//swichTime = millis() + (30 * 1000);
 
 	}
 
@@ -208,18 +201,19 @@ void loop() {
 	display.print("P:");
 	display.print(outputVal);
 
-	unsigned long time = millis() / 1000;
+	
 	display.print(" T:");
 	display.println(time);
 
 
 	display.print("Tsw.: ");
-	time = swichTime / 1000;
-	display.println(time);
+	display.println(swichTime);
 
 
 	display.print("RT:");
-	display.println(temp_room);
+	display.print(temp_room);
+	display.print("   m:");
+	display.println(mode);
 
 	display.display();
 
@@ -236,6 +230,8 @@ void adjust_up() {
 	setpoint += 0.5;
 	myPID.reset();
 	eeprom_write();
+	time = 0;
+	swichTime = 20;
 }
 void adjust_down() {
 	delay(40);
@@ -246,6 +242,8 @@ void adjust_down() {
 	setpoint -= 0.5;
 	myPID.reset();
 	eeprom_write();
+	time = 0;
+	swichTime = 20;
 }
 void eeprom_write() {
 	uint8_t  bytes[2];

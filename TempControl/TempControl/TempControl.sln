@@ -7,7 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TempControl", "TempControl\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TempControlV2", "TempControlV2\TempControlV2.vcxproj", "{45C5F092-3560-4BF7-A84E-033B8277E279}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BasicTempControl", "..\..\..\..\..\Documents\Arduino\My Examples\BasicTempControl\BasicTempControl.vcxproj", "{A61E52CA-78F6-4F8C-932E-D117A5B2253C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TempControlV3", "TempControlV3\TempControlV3.vcxproj", "{7FA9DE2A-CD82-475B-9619-FC11D3BFB37E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{45C5F092-3560-4BF7-A84E-033B8277E279}.Debug|x86.Build.0 = Debug|Win32
 		{45C5F092-3560-4BF7-A84E-033B8277E279}.Release|x86.ActiveCfg = Release|Win32
 		{45C5F092-3560-4BF7-A84E-033B8277E279}.Release|x86.Build.0 = Release|Win32
-		{A61E52CA-78F6-4F8C-932E-D117A5B2253C}.Debug|x86.ActiveCfg = Debug|Win32
-		{A61E52CA-78F6-4F8C-932E-D117A5B2253C}.Debug|x86.Build.0 = Debug|Win32
-		{A61E52CA-78F6-4F8C-932E-D117A5B2253C}.Release|x86.ActiveCfg = Release|Win32
-		{A61E52CA-78F6-4F8C-932E-D117A5B2253C}.Release|x86.Build.0 = Release|Win32
+		{7FA9DE2A-CD82-475B-9619-FC11D3BFB37E}.Debug|x86.ActiveCfg = Debug|Win32
+		{7FA9DE2A-CD82-475B-9619-FC11D3BFB37E}.Debug|x86.Build.0 = Debug|Win32
+		{7FA9DE2A-CD82-475B-9619-FC11D3BFB37E}.Release|x86.ActiveCfg = Release|Win32
+		{7FA9DE2A-CD82-475B-9619-FC11D3BFB37E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
